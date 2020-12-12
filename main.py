@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import filedialog
-import processor2
+from tkinter import filedialog, messagebox
+import processor
 
 class App:
 	def __init__(self, master):
@@ -15,18 +15,29 @@ class App:
 - Please ensure the input file has no headers
 - The first x coordinate should be in cell A1
 		'''
-		tk.Label(self.frame, text=text, justify='left').grid(row=0,column=0,columnspan=2)
+		tk.Label(self.frame, text=text, justify='left').grid(row=0,column=0,columnspan=2,padx=5)
+
+		# criteria entries
+		criteria = tk.LabelFrame(self.frame, text='Criteria')
+		criteria.grid(row=1,column=0,columnspan=2,pady=(0,10))
+		tk.Label(criteria, text='ABRfl Property A').grid(row=0,column=0,sticky='e')
+		self.crit_A = tk.Entry(criteria, width=4)
+		self.crit_A.grid(row=0,column=1,sticky='w')
+		tk.Label(criteria, text='ABRfl Property B').grid(row=1,column=0,sticky='e')
+		self.crit_B = tk.Entry(criteria, width=4)
+		self.crit_B.grid(row=1,column=1,sticky='w')
+		tk.Label(criteria, text='ABRfl Property x').grid(row=2,column=0,sticky='e')
+		self.crit_x = tk.Entry(criteria, width=4)
+		self.crit_x.grid(row=2,column=1,sticky='w')
+
 		self.pathvar = tk.StringVar()
 		self.pathvar.set('No file selected...')
-		tk.Label(self.frame, textvariable=self.pathvar).grid(row=1,column=0)
+		tk.Label(self.frame, textvariable=self.pathvar).grid(row=2,column=0,sticky='e')
 		self.select = tk.Button(self.frame, text='Select file...', command=self.get_path)
-		self.select.grid(row=1,column=1)
-
-		self.color = tk.IntVar()
-		tk.Checkbutton(self.frame, text='Colour grid ', variable=self.color, onvalue=1, offvalue=0).grid(row=2,column=0,columnspan=2)
+		self.select.grid(row=2,column=1,sticky='w')
 
 		self.go_button = tk.Button(self.frame, text='Process data', state='disabled', command=self.process)
-		self.go_button.grid(row=3,column=0,columnspan=2)
+		self.go_button.grid(row=3,column=0,columnspan=2,padx=5,pady=5)
 
 	def get_path(self):
 		self.file_path = filedialog.askopenfilename(filetypes=[('Excel files','.xlsx')])
@@ -35,7 +46,15 @@ class App:
 			self.go_button['state'] = 'normal'
 
 	def process(self):
-		processor2.process(self.file_path, self.color.get())
+		criteria = {}
+		try:
+			criteria['PAX'] = criteria['PAY'] = float(self.crit_A.get())
+			criteria['PBX'] = criteria['PBY'] = float(self.crit_B.get())
+			criteria['PXX'] = criteria['PXY'] = float(self.crit_x.get())
+		except:
+			messagebox.showerror('Error', 'Invalid Criteria!')
+			return
+		processor.process(self.file_path, criteria)
 		self.go_button['state'] = 'disabled'
 		self.pathvar.set('No file selected...')
 
