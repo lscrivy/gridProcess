@@ -1,7 +1,10 @@
 import pandas as pd
 
-def process(file_path, criteria):
-	df = pd.read_excel(file_path, usecols=[0,1,2], header=None, names=['x','y','z'])
+def process(file_path, criteria, test_name):
+	if file_path[-4:] == '.csv':
+		df = pd.read_csv(file_path, usecols=[0,1,2], header=None, names=['x','y','z'])
+	else:
+		df = pd.read_excel(file_path, usecols=[0,1,2], header=None, names=['x','y','z'])
 
 	# adjust the resolution to 1
 	df.x = (df.x/50).astype(int)
@@ -19,19 +22,23 @@ def process(file_path, criteria):
 	# both x and y are ascending
 	grid = [[None for x in range(df.x.max()+1)] for y in range(df.y.max()+1)]
 
-	for row in df.itertuples():
-		grid[row.y][row.x] = row.z
+	# using zip df.to_dict('list') is about three times faster!
+	# for row in df.itertuples():
+	# 	grid[row.y][row.x] = row.z
+
+	for row in zip(*df.to_dict('list').values()):
+		grid[row[1]][row[0]] = row[2]
 
 
 
 	# reverse the row order 
-	result_df = pd.DataFrame(grid, index=y_vals, columns=x_vals)[::-1]
+	result_df = pd.DataFrame(grid, index=y_vals, columns=x_vals)[::-1].round(2)
 
-	writer = pd.ExcelWriter('results/grid.xlsx', engine='xlsxwriter')
-	result_df.to_excel(writer, sheet_name='Grid')
+	writer = pd.ExcelWriter(f'results/{test_name} - Grid of Heights.xlsx', engine='xlsxwriter')
+	result_df.to_excel(writer, sheet_name=test_name)
 
 	# conditional formatting
-	worksheet = writer.sheets['Grid']
+	worksheet = writer.sheets[test_name]
 	worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type': '3_color_scale'})
 
 	writer.save()
@@ -68,16 +75,68 @@ def process(file_path, criteria):
 	# y direction
 	results['PXY'] = [[roc(grid[y-6][x], val, grid[y+6][x]) if y-6>=0 and y+6<len(grid) else None for x, val in enumerate(row)] for y, row in enumerate(grid)]
 
-
+	errors = {'type':[],'count':[]}
 	for r in results:
-		frame = pd.DataFrame(results[r], index=y_vals, columns=x_vals)[::-1]
-		writer = pd.ExcelWriter(f'results/{r}.xlsx', engine='xlsxwriter')
-		frame.to_excel(writer, sheet_name='Grid')
+		frame = pd.DataFrame(results[r], index=y_vals, columns=x_vals)[::-1].round(2)
+		writer = pd.ExcelWriter(f'results/{test_name} - Property {r[1]} ({r[2].lower()}).xlsx', engine='xlsxwriter')
+		frame.to_excel(writer, sheet_name=test_name)
 		workbook = writer.book
-		worksheet = writer.sheets['Grid']
+		worksheet = writer.sheets[test_name]
 		format1 = workbook.add_format({'bg_color':'red'})
-		worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type': 'cell', 'criteria':'not between', 'minimum':-criteria[r], 'maximum':criteria[r], 'format':format1})
+		worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, 
+			{'type': 'cell', 'criteria':'not between', 'minimum':-criteria[r], 'maximum':criteria[r], 'format':format1}
+			)
 
 		writer.save()
+
+		# find out how many errors there are
+		errors['type'].append(f'Property {r[1]} ({r[2].lower()})')
+		errors['count'].append(sum(val <= -criteria[r] or val >= criteria[r] for val in [item for sublist in results[r] for item in sublist] if val))
+
+	errors_df = pd.DataFrame(errors)
+	errors_df.to_excel(f'results/{test_name} - Summary.xlsx')
+
+
+def filter(criteria, test_name, y1, y2):
+	results = {}
+
+	results['grid'] = pd.read_excel(f'results/{test_name} - Grid of Heights.xlsx', index_col=0)
+	results['PAX'] = pd.read_excel(f'results/{test_name} - Property A (x).xlsx', index_col=0)
+	results['PBX'] = pd.read_excel(f'results/{test_name} - Property B (x).xlsx', index_col=0)
+	results['PXX'] = pd.read_excel(f'results/{test_name} - Property X (x).xlsx', index_col=0)
+
+	results = {n:frame.loc[frame.index.isin([y1,y2])] for n, frame in results.items()}
+	
+	for r in results:
+		if r == 'grid':
+			writer = pd.ExcelWriter(f'results/{test_name} - Grid of Heights (y={y1}or{y2}).xlsx', engine='xlsxwriter')
+			results[r].to_excel(writer, sheet_name=test_name)
+
+			# conditional formatting
+			worksheet = writer.sheets[test_name]
+			worksheet.conditional_format(1,1,2,len(results[r].columns), {'type': '3_color_scale'})
+
+			writer.save()
+		else:
+			writer = pd.ExcelWriter(f'results/{test_name} - Property {r[1]} ({r[2].lower()}) (y={y1}or{y2}).xlsx', engine='xlsxwriter')
+			results[r].to_excel(writer, sheet_name=test_name)
+			workbook = writer.book
+			worksheet = writer.sheets[test_name]
+			format1 = workbook.add_format({'bg_color':'red'})
+			worksheet.conditional_format(1,1,2,len(results[r].columns), 
+				{'type': 'cell', 'criteria':'not between', 'minimum':-criteria[r], 'maximum':criteria[r], 'format':format1}
+				)
+
+			writer.save()
+
+
+# if __name__ == '__main__':
+# 	filter({'PAX':1,'PBX':1,'PXX':1}, 'MyTest', -50, -1000)
+
+
+
+
+
+
 
 
