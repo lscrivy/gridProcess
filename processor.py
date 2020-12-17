@@ -75,10 +75,11 @@ def process(file_path, criteria, test_name):
 	# y direction
 	results['PXY'] = [[roc(grid[y-6][x], val, grid[y+6][x]) if y-6>=0 and y+6<len(grid) else None for x, val in enumerate(row)] for y, row in enumerate(grid)]
 
-	errors = {'type':[],'count':[]}
+	# to count the errors for our summary file
+	errors = {'Type':[],'Criteria':[],'Error Count':[]}
 	for r in results:
 		frame = pd.DataFrame(results[r], index=y_vals, columns=x_vals)[::-1].round(2)
-		writer = pd.ExcelWriter(f'results/{test_name} - Property {r[1]} ({r[2].lower()}).xlsx', engine='xlsxwriter')
+		writer = pd.ExcelWriter(f'results/{test_name} - ABRfl Property {r[1]} ({r[2].lower()}).xlsx', engine='xlsxwriter')
 		frame.to_excel(writer, sheet_name=test_name)
 		workbook = writer.book
 		worksheet = writer.sheets[test_name]
@@ -90,20 +91,35 @@ def process(file_path, criteria, test_name):
 		writer.save()
 
 		# find out how many errors there are
-		errors['type'].append(f'Property {r[1]} ({r[2].lower()})')
-		errors['count'].append(sum(val <= -criteria[r] or val >= criteria[r] for val in [item for sublist in results[r] for item in sublist] if val))
+		errors['Type'].append(f'ABRfl Property {r[1]} ({r[2].lower()})')
+		errors['Criteria'].append(f'-{criteria[r]} < z < {criteria[r]}')
+		errors['Error Count'].append(sum(val <= -criteria[r] or val >= criteria[r] for val in [item for sublist in results[r] for item in sublist] if val))
 
 	errors_df = pd.DataFrame(errors)
-	errors_df.to_excel(f'results/{test_name} - Summary.xlsx')
+
+	# summary file
+	writer = pd.ExcelWriter(f'results/{test_name} - Summary.xlsx', engine='xlsxwriter')
+	errors_df.to_excel(writer, sheet_name=test_name, index=False, startrow=3)
+
+	workbook = writer.book
+	worksheet = writer.sheets[test_name]
+
+	worksheet.write(0, 0, test_name)
+
+	worksheet.write(2, 0, 'Errors')
+	
+
+	writer.save()
+
 
 
 def filter(criteria, test_name, y1, y2):
 	results = {}
 
 	results['grid'] = pd.read_excel(f'results/{test_name} - Grid of Heights.xlsx', index_col=0)
-	results['PAX'] = pd.read_excel(f'results/{test_name} - Property A (x).xlsx', index_col=0)
-	results['PBX'] = pd.read_excel(f'results/{test_name} - Property B (x).xlsx', index_col=0)
-	results['PXX'] = pd.read_excel(f'results/{test_name} - Property X (x).xlsx', index_col=0)
+	results['PAX'] = pd.read_excel(f'results/{test_name} - ABRfl Property A (x).xlsx', index_col=0)
+	results['PBX'] = pd.read_excel(f'results/{test_name} - ABRfl Property B (x).xlsx', index_col=0)
+	results['PXX'] = pd.read_excel(f'results/{test_name} - ABRfl Property X (x).xlsx', index_col=0)
 
 	results = {n:frame.loc[frame.index.isin([y1,y2])] for n, frame in results.items()}
 	
@@ -118,7 +134,7 @@ def filter(criteria, test_name, y1, y2):
 
 			writer.save()
 		else:
-			writer = pd.ExcelWriter(f'results/{test_name} - Property {r[1]} ({r[2].lower()}) (y={y1}or{y2}).xlsx', engine='xlsxwriter')
+			writer = pd.ExcelWriter(f'results/{test_name} - ABRfl Property {r[1]} ({r[2].lower()}) (y={y1}or{y2}).xlsx', engine='xlsxwriter')
 			results[r].to_excel(writer, sheet_name=test_name)
 			workbook = writer.book
 			worksheet = writer.sheets[test_name]
