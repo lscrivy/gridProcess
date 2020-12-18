@@ -34,14 +34,13 @@ def process(file_path, criteria, test_name):
 	# reverse the row order 
 	result_df = pd.DataFrame(grid, index=y_vals, columns=x_vals)[::-1].round(2)
 
-	writer = pd.ExcelWriter(f'results/{test_name} - Grid of Heights.xlsx', engine='xlsxwriter')
-	result_df.to_excel(writer, sheet_name=test_name)
+	writer = pd.ExcelWriter(f'results/{test_name}.xlsx', engine='xlsxwriter')
+	result_df.to_excel(writer, sheet_name='Grid of Heights')
 
 	# conditional formatting
-	worksheet = writer.sheets[test_name]
+	worksheet = writer.sheets['Grid of Heights']
 	worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type': '3_color_scale'})
 
-	writer.save()
 
 
 
@@ -79,35 +78,31 @@ def process(file_path, criteria, test_name):
 	errors = {'Type':[],'Criteria':[],'Error Count':[]}
 	for r in results:
 		frame = pd.DataFrame(results[r], index=y_vals, columns=x_vals)[::-1].round(2)
-		writer = pd.ExcelWriter(f'results/{test_name} - ABRfl Property {r[1]} ({r[2].lower()}).xlsx', engine='xlsxwriter')
-		frame.to_excel(writer, sheet_name=test_name)
+		sheet_name = f'ABRfl Property {r[1]} ({r[2].lower()})'
+		frame.to_excel(writer, sheet_name=sheet_name)
 		workbook = writer.book
-		worksheet = writer.sheets[test_name]
+		worksheet = writer.sheets[sheet_name]
 		format1 = workbook.add_format({'bg_color':'red'})
 		worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, 
 			{'type': 'cell', 'criteria':'not between', 'minimum':-criteria[r], 'maximum':criteria[r], 'format':format1}
 			)
 
-		writer.save()
-
 		# find out how many errors there are
 		errors['Type'].append(f'ABRfl Property {r[1]} ({r[2].lower()})')
-		errors['Criteria'].append(f'-{criteria[r]} < z < {criteria[r]}')
+		errors['Criteria'].append(f'-{criteria[r]} ≤ z ≤ {criteria[r]}')
 		errors['Error Count'].append(sum(val <= -criteria[r] or val >= criteria[r] for val in [item for sublist in results[r] for item in sublist] if val))
 
 	errors_df = pd.DataFrame(errors)
 
 	# summary file
-	writer = pd.ExcelWriter(f'results/{test_name} - Summary.xlsx', engine='xlsxwriter')
-	errors_df.to_excel(writer, sheet_name=test_name, index=False, startrow=3)
+	errors_df.to_excel(writer, sheet_name='Summary', index=False, startrow=3)
 
 	workbook = writer.book
-	worksheet = writer.sheets[test_name]
+	worksheet = writer.sheets['Summary']
 
 	worksheet.write(0, 0, test_name)
-
 	worksheet.write(2, 0, 'Errors')
-	
+	worksheet.set_column(0,2,20)
 
 	writer.save()
 
@@ -116,34 +111,32 @@ def process(file_path, criteria, test_name):
 def filter(criteria, test_name, y1, y2):
 	results = {}
 
-	results['grid'] = pd.read_excel(f'results/{test_name} - Grid of Heights.xlsx', index_col=0)
-	results['PAX'] = pd.read_excel(f'results/{test_name} - ABRfl Property A (x).xlsx', index_col=0)
-	results['PBX'] = pd.read_excel(f'results/{test_name} - ABRfl Property B (x).xlsx', index_col=0)
-	results['PXX'] = pd.read_excel(f'results/{test_name} - ABRfl Property X (x).xlsx', index_col=0)
+	results['grid'] = pd.read_excel(f'results/{test_name}.xlsx', sheet_name='Grid of Heights', index_col=0)
+	results['PAX'] = pd.read_excel(f'results/{test_name}.xlsx', sheet_name='ABRfl Property A (x)', index_col=0)
+	results['PBX'] = pd.read_excel(f'results/{test_name}.xlsx', sheet_name='ABRfl Property B (x)', index_col=0)
+	results['PXX'] = pd.read_excel(f'results/{test_name}.xlsx', sheet_name='ABRfl Property X (x)', index_col=0)
 
 	results = {n:frame.loc[frame.index.isin([y1,y2])] for n, frame in results.items()}
-	
+	writer = pd.ExcelWriter(f'results/{test_name} (y={y1}|{y2}).xlsx')
+
 	for r in results:
 		if r == 'grid':
-			writer = pd.ExcelWriter(f'results/{test_name} - Grid of Heights (y={y1}or{y2}).xlsx', engine='xlsxwriter')
-			results[r].to_excel(writer, sheet_name=test_name)
+			results[r].to_excel(writer, sheet_name='Grid of Heights')
 
 			# conditional formatting
-			worksheet = writer.sheets[test_name]
+			worksheet = writer.sheets['Grid of Heights']
 			worksheet.conditional_format(1,1,2,len(results[r].columns), {'type': '3_color_scale'})
-
-			writer.save()
 		else:
-			writer = pd.ExcelWriter(f'results/{test_name} - ABRfl Property {r[1]} ({r[2].lower()}) (y={y1}or{y2}).xlsx', engine='xlsxwriter')
-			results[r].to_excel(writer, sheet_name=test_name)
+			sheet_name = f'ABRfl Property {r[1]} ({r[2].lower()})'
+			results[r].to_excel(writer, sheet_name=sheet_name)
 			workbook = writer.book
-			worksheet = writer.sheets[test_name]
+			worksheet = writer.sheets[sheet_name]
 			format1 = workbook.add_format({'bg_color':'red'})
 			worksheet.conditional_format(1,1,2,len(results[r].columns), 
 				{'type': 'cell', 'criteria':'not between', 'minimum':-criteria[r], 'maximum':criteria[r], 'format':format1}
 				)
 
-			writer.save()
+	writer.save()
 
 
 # if __name__ == '__main__':
