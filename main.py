@@ -46,7 +46,7 @@ class App:
 		self.select = ttk.Button(tab1, text='Select file...', command=self.get_path)
 		self.select.pack()
 		self.go_button = ttk.Button(tab1, text='Process data', state='disabled', command=self.process)
-		self.go_button.pack()
+		self.go_button.pack(padx=50)
 
 		# tab 2
 		yframe1 = ttk.Frame(tab2)
@@ -64,7 +64,10 @@ class App:
 	def get_path(self):
 		self.file_path = filedialog.askopenfilename(filetypes=[('Excel','.xlsx'),('CSV','.csv')])
 		if self.file_path:
-			self.pathvar.set(self.file_path)
+			if len(self.file_path) < 30:
+				self.pathvar.set(self.file_path)
+			else:
+				self.pathvar.set(self.file_path[:26]+'...')
 			self.go_button['state'] = 'normal'
 
 	def process(self):
