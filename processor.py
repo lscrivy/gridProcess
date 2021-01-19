@@ -1,10 +1,13 @@
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 def process(file_path, criteria, test_name):
 	if file_path[-4:] == '.csv':
 		df = pd.read_csv(file_path, usecols=[0,1,2], header=None, names=['x','y','z'])
 	else:
 		df = pd.read_excel(file_path, usecols=[0,1,2], header=None, names=['x','y','z'])
+
 
 	# adjust the resolution to 1
 	df.x = (df.x/50).astype(int)
@@ -111,6 +114,17 @@ def process(file_path, criteria, test_name):
 	worksheet.set_column(0,4,20)
 
 	writer.save()
+
+
+
+	# create contour map
+	cont_x, cont_y = np.meshgrid(x_vals, y_vals)
+	# cont_z = df.z.values.reshape((len(cont_x), len(cont_y)))
+	fig, ax = plt.subplots()
+	cmap = plt.cm.RdYlGn
+	map = ax.contourf(cont_x, cont_y, grid, 50, cmap=cmap)
+	fig.colorbar(map)
+	plt.show()
 
 
 

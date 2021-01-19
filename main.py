@@ -10,9 +10,10 @@ class App:
 
 		self.file_path = ''
 
-		text = '''Title Text... / info'''
+		text = '''Title Text...
+info about using this app etc. etc.'''
 
-		ttk.Label(self.frame, text=text, justify='left').grid(row=0,column=0,columnspan=2,padx=10,pady=10)
+		ttk.Label(self.frame, text=text, justify='center').grid(row=0,column=0,columnspan=2,padx=10,pady=10)
 
 		ttk.Label(self.frame, text='Test name: ').grid(row=1,column=0,sticky='e')
 		self.test_name = ttk.Entry(self.frame, width=10)
@@ -43,9 +44,9 @@ class App:
 		self.pathvar = tk.StringVar()
 		self.pathvar.set('No file selected...')
 		ttk.Label(tab1, textvariable=self.pathvar, padding=(0,0,0,10)).pack()
-		self.select = ttk.Button(tab1, text='Select file...', command=self.get_path)
+		self.select = ttk.Button(tab1, text='Select file...', width=10, command=self.get_path)
 		self.select.pack()
-		self.go_button = ttk.Button(tab1, text='Process data', state='disabled', command=self.process)
+		self.go_button = ttk.Button(tab1, text='Process data', width=10, state='disabled', command=self.process)
 		self.go_button.pack(padx=50)
 
 		# tab 2
@@ -105,5 +106,6 @@ if __name__ == '__main__':
 	root.title('Grid Processor')
 	root.style = ttk.Style()
 	root.style.theme_use('default')
+	root.style.configure('.', font=('Microsoft Sans Serif', 14))
 	app = App(root)
 	root.mainloop()
