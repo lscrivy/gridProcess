@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors
 
 def process(file_path, criteria, test_name):
 	if file_path[-4:] == '.csv':
@@ -10,8 +11,8 @@ def process(file_path, criteria, test_name):
 
 
 	# adjust the resolution to 1
-	df.x = (df.x/50).astype(int)
-	df.y = (df.y/50).astype(int)
+	df.x = (df.x/50).apply(np.floor).astype(int)
+	df.y = (df.y/50).apply(np.floor).astype(int)
 
 	# get values for use as index/columns later
 	y_vals = [y*50 for y in range(df.y.min(), df.y.max()+1)]
@@ -42,7 +43,8 @@ def process(file_path, criteria, test_name):
 
 	# conditional formatting
 	worksheet = writer.sheets['Grid of Heights']
-	worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type': '3_color_scale'})
+	worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type':'2_color_scale', 'min_color':'#FFFFFF', 'max_color':'#000000'})
+	worksheet.conditional_format(1,1,df.y.max()+1,df.x.max()+1, {'type':'3_color_scale'})
 
 
 
@@ -93,7 +95,7 @@ def process(file_path, criteria, test_name):
 		# find out how many errors there are
 		errors['Type'].append(f'ABRfl Property {r[1]} ({r[2].lower()})')
 		errors['Criteria'].append(f'-{criteria[r]} ≤ z ≤ {criteria[r]}')
-		total_points = sum(len([z for z in row if z]) for row in results[r])
+		total_points = sum(len([z for z in row if z!=None]) for row in results[r])
 		errors['Total Points'].append(total_points)
 		error_count = sum(val <= -criteria[r] or val >= criteria[r] for val in [item for sublist in results[r] for item in sublist] if val)
 		errors['Non-compliant Points'].append(error_count)
@@ -117,14 +119,29 @@ def process(file_path, criteria, test_name):
 
 
 
-	# create contour map
+	# create contour maps
+	plt.rcParams.update({'font.size':2})
 	cont_x, cont_y = np.meshgrid(x_vals, y_vals)
-	# cont_z = df.z.values.reshape((len(cont_x), len(cont_y)))
+
+	# grid
 	fig, ax = plt.subplots()
-	cmap = plt.cm.RdYlGn
-	map = ax.contourf(cont_x, cont_y, grid, 50, cmap=cmap)
-	fig.colorbar(map)
-	plt.show()
+	cmap = plt.cm.jet
+	map = ax.contourf(cont_x, cont_y, grid, 200, cmap=cmap)
+	ax.axis('scaled')
+	fig.colorbar(map, fraction=0.046, pad=0.06, orientation='horizontal', shrink=.2, ticks=[-20,-15,-10,-5,0])
+	plt.savefig(f'results/{test_name} Contour.png', bbox_inches='tight', dpi=1000)
+
+	# criteria maps
+	for r in results:
+		fig, ax = plt.subplots()
+		colors = ['red','white','red']
+		cmap = matplotlib.colors.ListedColormap(colors)
+		# array = np.array(results[r], dtype=np.float64)
+		# boundaries = [np.nanmin(array), -criteria[r], criteria[r], np.nanmax(array)]
+		boundaries = [-99999999999, -criteria[r], criteria[r], 99999999999]
+		map = ax.contourf(cont_x, cont_y, results[r], levels=boundaries, cmap=cmap)
+		ax.axis('scaled')
+		plt.savefig(f'results/{test_name} {r}.png', bbox_inches='tight', dpi=1000)
 
 
 
